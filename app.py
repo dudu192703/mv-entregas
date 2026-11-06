@@ -73,21 +73,65 @@ def cents(value):
     except (InvalidOperation, ValueError):
         raise HTTPException(400, "Valor inválido")
 
+def period_bounds(today, period):
+    if period == "dia":
+        return today, today
+    if period == "semana":
+        return today - timedelta(days=today.weekday()), today
+    if period == "mes":
+        return today.replace(day=1), today
+    return today.replace(day=1 if today.day <= 15 else 16), today
+
+
 @app.get("/", response_class=HTMLResponse)
-def home(request: Request):
+def home(request: Request, periodo: str = "quinzena"):
     if not request.session.get("auth"):
         return render(request, "login")
+    if periodo not in ("dia", "semana", "quinzena", "mes"):
+        periodo = "quinzena"
+    today = date.today()
+    start, end = period_bounds(today, periodo)
     with db() as c:
-        today = date.today()
-        start_week = today - timedelta(days=today.weekday())
-        start_month = today.replace(day=1)
-        start_half = today.replace(day=1 if today.day <= 15 else 16)
         stats = {}
-        for key, start in [("dia",today),("semana",start_week),("mes",start_month),("quinzena",start_half)]:
-            r = c.execute("SELECT COALESCE(SUM(packages),0) n, COALESCE(SUM(packages*rate_cents),0) v FROM deliveries WHERE day BETWEEN ? AND ?",(str(start),str(today))).fetchone()
+        for key in ("dia", "semana", "quinzena", "mes"):
+            first, last = period_bounds(today, key)
+            r = c.execute(
+                "SELECT COALESCE(SUM(packages),0) n, COALESCE(SUM(packages*rate_cents),0) v "
+                "FROM deliveries WHERE day BETWEEN ? AND ?", (str(first), str(last))
+            ).fetchone()
             stats[key] = dict(r)
-        ranking = c.execute("SELECT d.name, COALESCE(SUM(e.packages),0) n, COALESCE(SUM(e.packages*e.rate_cents),0) v FROM drivers d LEFT JOIN deliveries e ON e.driver_id=d.id AND e.day BETWEEN ? AND ? GROUP BY d.id ORDER BY n DESC",(str(start_half),str(today))).fetchall()
-    return render(request, "dashboard", stats=stats, ranking=ranking)
+        ranking = [dict(row) for row in c.execute(
+            "SELECT d.name, COALESCE(SUM(e.packages),0) n, "
+            "COALESCE(SUM(e.packages*e.rate_cents),0) v "
+            "FROM drivers d LEFT JOIN deliveries e ON e.driver_id=d.id "
+            "AND e.day BETWEEN ? AND ? GROUP BY d.id ORDER BY n DESC,d.name",
+            (str(start), str(end))
+        ).fetchall()]
+        daily = {row["day"]: dict(row) for row in c.execute(
+            "SELECT day,SUM(packages) n,SUM(packages*rate_cents) v "
+            "FROM deliveries WHERE day BETWEEN ? AND ? GROUP BY day ORDER BY day",
+            (str(start), str(end))
+        ).fetchall()}
+        active_drivers = c.execute(
+            "SELECT COUNT(DISTINCT driver_id) n FROM deliveries WHERE day BETWEEN ? AND ?",
+            (str(start), str(end))
+        ).fetchone()["n"]
+    days = []
+    current = start
+    while current <= end:
+        record = daily.get(str(current), {"n": 0, "v": 0})
+        days.append({"label": current.strftime("%d/%m"), "n": record["n"], "v": record["v"]})
+        current += timedelta(days=1)
+    selected = stats[periodo]
+    max_daily = max((row["n"] for row in days), default=0)
+    max_driver = max((row["n"] for row in ranking), default=0)
+    return render(
+        request, "dashboard", stats=stats, ranking=ranking, days=days,
+        periodo=periodo, selected=selected, active_drivers=active_drivers,
+        max_daily=max_daily, max_driver=max_driver,
+        period_label=f"{start.strftime('%d/%m/%Y')} a {end.strftime('%d/%m/%Y')}"
+    )
+
 
 @app.post("/login")
 def login(request: Request, password: str = Form(...)):
