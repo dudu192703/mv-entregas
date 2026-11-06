@@ -25,6 +25,41 @@
 .login-deco{position:absolute;z-index:-1;color:#252930;opacity:.07;pointer-events:none;font-size:140px;transform:rotate(-13deg)}
 .login-deco.one{top:12%;left:8%}.login-deco.two{right:9%;bottom:7%}
 @media(max-width:520px){.login-card{padding:35px 25px 29px}.login-card h1{font-size:31px}.login:before{width:85%}.login:after{width:85%}.login-deco{display:none}}
+
+/* Dashboard */
+.dashboard-head{display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:22px}
+.dashboard-head h2{font-size:25px;margin:0 0 5px}.dashboard-head p{margin:0;color:#7c8189;font-size:14px}
+.period-switch{display:flex;gap:5px;background:#fff;border:1px solid #e8e8eb;padding:5px;border-radius:11px;flex-wrap:wrap}
+.period-switch a{padding:10px 13px;border-radius:8px;font-weight:700;font-size:13px;color:#555b65}
+.period-switch a.selected{background:#ffe000;color:#202329}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:17px;margin-bottom:18px}
+.kpi{background:white;border:1px solid #eff0f2;border-radius:16px;padding:20px;box-shadow:0 6px 24px #00000008}
+.kpi-top{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:13px;color:#777c86;font-weight:700}
+.kpi-icon{width:37px;height:37px;border-radius:10px;background:#fff4bb;color:#3a3314;display:grid;place-items:center;font-size:20px}
+.kpi strong{display:block;font-size:29px;color:#22252b;margin:14px 0 7px;letter-spacing:-.7px}
+.kpi small{color:#8a8d94;font-size:12px}
+.dashboard-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(260px,1fr);gap:18px}
+.dash-panel{background:#fff;border:1px solid #eff0f2;border-radius:16px;padding:23px;box-shadow:0 6px 24px #00000008;margin-bottom:18px;min-width:0}
+.dash-panel h3{margin:0 0 6px;font-size:18px}.dash-panel .sub{color:#90949b;font-size:12px;margin:0 0 20px}
+.chart-bars{height:235px;display:flex;align-items:stretch;gap:7px;border-bottom:1px solid #e8eaef;padding:10px 4px 0;overflow-x:auto;background:repeating-linear-gradient(to top,transparent 0,transparent 55px,#f2f3f5 56px)}
+.chart-col{min-width:24px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;height:100%}
+.chart-col .value{font-size:10px;color:#777;font-weight:700}
+.chart-col .fill{width:min(100%,40px);background:linear-gradient(#ffe600,#e8bc00);border-radius:6px 6px 0 0;min-height:0}
+.chart-col .tick{font-size:10px;color:#7b7e85;white-space:nowrap;padding-top:7px;transform:translateY(19px)}
+.chart-wrap{padding-bottom:22px}
+.rank-item{display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #f0f0f2}
+.rank-num{background:#fff0a5;width:31px;height:31px;display:grid;place-items:center;border-radius:9px;font-weight:800}
+.rank-name{flex:1;min-width:0;font-weight:700;font-size:13px;overflow-wrap:anywhere}
+.rank-name small{display:block;color:#999;font-size:11px;font-weight:400;margin-top:3px}
+.rank-qty{font-weight:800;font-size:15px}
+.driver-bar-row{display:grid;grid-template-columns:minmax(95px,150px) 1fr 65px;gap:13px;align-items:center;margin:17px 0;font-size:13px}
+.driver-track{height:19px;background:#f2f3f5;border-radius:6px;overflow:hidden}
+.driver-track span{display:block;height:100%;background:#ffda00;border-radius:6px}
+.summary-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.summary-cell{padding:16px;background:#fafafa;border-radius:11px}.summary-cell small{display:block;color:#777;margin-bottom:8px}.summary-cell b{font-size:20px}
+.empty-chart{padding:45px 12px;text-align:center;color:#92969e}
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-grid{grid-template-columns:1fr}}
+@media(max-width:520px){.kpi-grid{grid-template-columns:1fr 1fr;gap:9px}.kpi{padding:13px}.kpi strong{font-size:22px}.kpi-top{font-size:11px}.dash-panel{padding:15px}.period-switch a{padding:8px}.summary-strip{grid-template-columns:1fr}.driver-bar-row{grid-template-columns:90px 1fr 45px;gap:7px}}
 </style></head><body>
 {% if page == 'login' %}
 <div class="login">
@@ -55,6 +90,65 @@
   </section>
 </div>
 {% else %}<div class="layout"><aside><h2>🚚 MV Entregas</h2><p style="color:#bbb">Painel administrativo</p><nav><a href="/" class="{{'active' if page=='dashboard' else ''}}">▦ Dashboard</a><a href="/motoristas" class="{{'active' if page=='motoristas' else ''}}">♙ Motoristas</a><a href="/relatorios" class="{{'active' if page=='relatorios' else ''}}">▤ Relatórios</a></nav></aside><main><header><h1>{{ {'dashboard':'Dashboard','motoristas':'Motoristas','relatorios':'Relatórios'}[page] }}</h1><form method="post" action="/logout"><input type="hidden" name="token" value="{{csrf}}"><button>Sair</button></form></header>
-{% if page=='dashboard' %}<div class="cards">{% for key,title in [('dia','Hoje'),('semana','Semana'),('quinzena','Quinzena'),('mes','Mês')] %}<div class="card"><span class="muted">Entregas - {{title}}</span><b>{{stats[key].n}}</b><small>A pagar: R$ {{'%.2f'|format(stats[key].v/100)}}</small></div>{% endfor %}</div><section class="panel"><h2>Entregas por motorista — quinzena atual</h2>{% set max_n=ranking|map(attribute='n')|max if ranking else 0 %}{% for d in ranking %}<div class="barrow"><span>{{d.name}}</span><div class="bar" style="width:{{ (100*d.n/max_n)|round if max_n else 1 }}%"></div><span>{{d.n}}</span></div>{% else %}<p>Nenhum motorista cadastrado.</p>{% endfor %}</section>
+{% if page=='dashboard' %}
+<div class="dashboard-head">
+  <div><h2>Visão geral das entregas</h2><p>Indicadores atualizados com os lançamentos cadastrados • {{period_label}}</p></div>
+  <div class="period-switch" aria-label="Filtrar período">
+    {% for key,label in [('dia','Hoje'),('semana','Semana'),('quinzena','Quinzena'),('mes','Mês')] %}
+    <a href="/?periodo={{key}}" class="{{'selected' if periodo==key else ''}}">{{label}}</a>
+    {% endfor %}
+  </div>
+</div>
+<div class="kpi-grid">
+  <div class="kpi"><div class="kpi-top"><span>Entregas hoje</span><span class="kpi-icon">▣</span></div><strong>{{stats.dia.n}}</strong><small>R$ {{'%.2f'|format(stats.dia.v/100)}} a pagar</small></div>
+  <div class="kpi"><div class="kpi-top"><span>Entregas na semana</span><span class="kpi-icon">▥</span></div><strong>{{stats.semana.n}}</strong><small>R$ {{'%.2f'|format(stats.semana.v/100)}} a pagar</small></div>
+  <div class="kpi"><div class="kpi-top"><span>Entregas na quinzena</span><span class="kpi-icon">▤</span></div><strong>{{stats.quinzena.n}}</strong><small>R$ {{'%.2f'|format(stats.quinzena.v/100)}} a pagar</small></div>
+  <div class="kpi"><div class="kpi-top"><span>Entregas no mês</span><span class="kpi-icon">▦</span></div><strong>{{stats.mes.n}}</strong><small>R$ {{'%.2f'|format(stats.mes.v/100)}} a pagar</small></div>
+</div>
+<div class="dashboard-grid">
+  <div>
+    <section class="dash-panel">
+      <h3>Volume de entregas</h3><p class="sub">Quantidade de pacotes por dia no período selecionado</p>
+      {% if selected.n > 0 %}
+      <div class="chart-wrap"><div class="chart-bars">
+        {% for d in days %}
+        <div class="chart-col" title="{{d.label}}: {{d.n}} pacotes • R$ {{'%.2f'|format(d.v/100)}}">
+          <span class="value">{{d.n if d.n else ''}}</span>
+          <div class="fill" style="height:{{(d.n / max_daily * 175)|round|int if max_daily else 0}}px"></div>
+          <span class="tick">{{d.label}}</span>
+        </div>
+        {% endfor %}
+      </div></div>
+      {% else %}<p class="empty-chart">Nenhuma entrega registrada neste período.</p>{% endif %}
+    </section>
+    <section class="dash-panel">
+      <h3>Entregas por motorista</h3><p class="sub">Comparativo de pacotes entregues • {{period_label}}</p>
+      {% for d in ranking if d.n > 0 %}
+      <div class="driver-bar-row">
+        <span>{{d.name}}</span>
+        <div class="driver-track" title="{{d.n}} pacotes"><span style="width:{{(100*d.n/max_driver)|round|int if max_driver else 0}}%"></span></div>
+        <b>{{d.n}}</b>
+      </div>
+      {% else %}<p class="empty-chart">Sem entregas de motoristas neste período.</p>{% endfor %}
+    </section>
+  </div>
+  <div>
+    <section class="dash-panel">
+      <h3>Top motoristas</h3><p class="sub">Ranking por pacotes entregues no período</p>
+      {% for d in ranking[:6] if d.n > 0 %}
+      <div class="rank-item"><span class="rank-num">{{loop.index}}</span><span class="rank-name">{{d.name}}<small>R$ {{'%.2f'|format(d.v/100)}} a receber</small></span><span class="rank-qty">{{d.n}}</span></div>
+      {% else %}<p class="empty-chart">O ranking aparecerá após registrar entregas.</p>{% endfor %}
+    </section>
+    <section class="dash-panel">
+      <h3>Resumo financeiro</h3><p class="sub">Valores calculados com a tarifa registrada em cada entrega</p>
+      <div class="summary-strip" style="grid-template-columns:1fr">
+        <div class="summary-cell"><small>Total de pacotes no período</small><b>{{selected.n}}</b></div>
+        <div class="summary-cell"><small>Total a pagar aos motoristas</small><b>R$ {{'%.2f'|format(selected.v/100)}}</b></div>
+        <div class="summary-cell"><small>Motoristas com entregas no período</small><b>{{active_drivers}}</b></div>
+      </div>
+      <p style="margin-top:20px"><a class="btn" href="/relatorios">Ver relatórios completos</a></p>
+    </section>
+  </div>
+</div>
 {% elif page=='motoristas' %}<section class="panel"><h2>Adicionar motorista</h2><form method="post" action="/motoristas" class="row"><input type="hidden" name="token" value="{{csrf}}"><div><label>Nome</label><input name="name" required></div><div><label>Placa</label><input name="plate" required></div><div><label>CPF</label><input name="cpf" required></div><div><label>Valor por pacote (R$)</label><input name="rate" placeholder="3,50" required></div><button>Salvar motorista</button></form></section><section class="panel"><h2>Motoristas cadastrados</h2><div class="tablewrap"><table><tr><th>Nome</th><th>Placa</th><th>CPF</th><th>R$/pacote</th><th>Editar</th></tr>{% for d in drivers %}<tr><td>{{d.name}}</td><td>{{d.plate}}</td><td>***.***.{{d.cpf[6:9]}}-**</td><td>{{'%.2f'|format(d.rate_cents/100)}}</td><td><details><summary>Editar</summary><form method="post" action="/motoristas/{{d.id}}/editar"><input type="hidden" name="token" value="{{csrf}}"><input name="name" value="{{d.name}}" required><input name="plate" value="{{d.plate}}" required><input name="cpf" value="{{d.cpf}}" required><input name="rate" value="{{'%.2f'|format(d.rate_cents/100)}}" required><button>Salvar</button></form></details></td></tr>{% endfor %}</table></div></section><section class="panel"><h2>Lançar entregas do dia</h2><form class="row" method="post" action="/entregas"><input type="hidden" name="token" value="{{csrf}}"><div><label>Motorista</label><select name="driver_id" required>{% for d in drivers %}<option value="{{d.id}}">{{d.name}}</option>{% endfor %}</select></div><div><label>Data</label><input type="date" name="day" required></div><div><label>Pacotes entregues</label><input type="number" name="packages" min="0" required></div><button>Registrar</button></form></section><section class="panel"><h2>Últimos lançamentos</h2><div class="tablewrap"><table><tr><th>Data</th><th>Motorista</th><th>Pacotes</th><th>Valor</th><th>Ações</th></tr>{% for e in entries %}<tr><td>{{e.day}}</td><td>{{e.name}}</td><td>{{e.packages}}</td><td>R$ {{'%.2f'|format(e.packages*e.rate_cents/100)}}</td><td><details><summary>Editar</summary><form method="post" action="/entregas/{{e.id}}/editar"><input type="hidden" name="token" value="{{csrf}}"><select name="driver_id">{% for d in drivers %}<option value="{{d.id}}" {{'selected' if d.id==e.driver_id else ''}}>{{d.name}}</option>{% endfor %}</select><input type="date" name="day" value="{{e.day}}" required><input type="number" name="packages" value="{{e.packages}}" min="0" required><button>Salvar</button></form></details><form method="post" action="/entregas/{{e.id}}/excluir" onsubmit="return confirm('Excluir este lançamento?')" class="inline"><input type="hidden" name="token" value="{{csrf}}"><button>Excluir</button></form></td></tr>{% endfor %}</table></div></section>
 {% elif page=='relatorios' %}<section class="panel"><h2>Filtros do relatório</h2><form method="get" class="row"><div><label>Data inicial</label><input type="date" name="start" value="{{start}}"></div><div><label>Data final</label><input type="date" name="end" value="{{end}}"></div><div><label>Motoristas (Ctrl para vários)</label><select name="motorista" multiple size="4">{% for d in drivers %}<option value="{{d.id}}" {{'selected' if d.id in selected else ''}}>{{d.name}}</option>{% endfor %}</select><small>Sem seleção = todos</small></div><button>Gerar relatório</button></form></section><section class="panel"><h2>Resultado</h2>{% set ns=namespace(n=0,v=0) %}{% for d,rows in result %}<h3>{{d.name}}</h3><div class="tablewrap"><table><tr><th>Data</th><th>Pacotes</th><th>Valor ganho</th></tr>{% set s=namespace(n=0,v=0) %}{% for r in rows %}<tr><td>{{r.day}}</td><td>{{r.n}}</td><td>R$ {{'%.2f'|format(r.v/100)}}</td></tr>{% set s.n=s.n+r.n %}{% set s.v=s.v+r.v %}{% endfor %}<tr><th>Total</th><th>{{s.n}}</th><th>R$ {{'%.2f'|format(s.v/100)}}</th></tr>{% set ns.n=ns.n+s.n %}{% set ns.v=ns.v+s.v %}</table></div>{% endfor %}<h2>Total geral: {{ns.n}} pacotes — R$ {{'%.2f'|format(ns.v/100)}}</h2><form method="get" action="/relatorios/pdf"><input type="hidden" name="start" value="{{start}}"><input type="hidden" name="end" value="{{end}}">{% for id in selected %}<input type="hidden" name="motorista" value="{{id}}">{% endfor %}<button>Exportar PDF único</button></form></section>{% endif %}</main></div>{% endif %}</body></html>
