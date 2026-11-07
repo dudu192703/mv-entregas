@@ -67,6 +67,11 @@ with db() as c:
       details TEXT, at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
     """)
+    columns={r["name"] for r in c.execute("PRAGMA table_info(ml_progress)")}
+    if "status" not in columns:
+        c.execute("ALTER TABLE ml_progress ADD COLUMN status TEXT NOT NULL DEFAULT 'em_progresso'")
+    if "finalized_at" not in columns:
+        c.execute("ALTER TABLE ml_progress ADD COLUMN finalized_at TEXT")
     c.execute("""CREATE VIEW IF NOT EXISTS combined_deliveries AS
       SELECT driver_id,day,packages,rate_cents FROM deliveries
       UNION ALL
@@ -78,9 +83,11 @@ class MLDriver(BaseModel):
     processados: int = Field(ge=0, le=100000)
     total: int = Field(ge=0, le=100000)
     falhas: int = Field(ge=0, le=100000)
+    status: str = Field(pattern="^(em_progresso|finalizado)$")
 
 class MLBatch(BaseModel):
     motoristas: list[MLDriver] = Field(min_length=1,max_length=200)
+    dia: date
 
 def normalize_name(name):
     return " ".join(unicodedata.normalize("NFKD",name).casefold().split())
@@ -94,7 +101,9 @@ def sync_ml(request:Request, payload:MLBatch):
     received=request.headers.get("X-MV-Sync-Token","")
     if len(expected)<24 or not hmac.compare_digest(expected,received):
         raise HTTPException(401,"Token de sincronizacao invalido")
-    day=str(date.today())
+    if payload.dia > date.today() or payload.dia < date.today()-timedelta(days=1):
+        raise HTTPException(400,"Data da rota fora da janela permitida")
+    day=str(payload.dia)
     updated=created=0
     with db() as c:
         existing=c.execute("SELECT id,name FROM drivers").fetchall()
@@ -125,13 +134,23 @@ def sync_ml(request:Request, payload:MLBatch):
                 created+=1
             c.execute("INSERT OR IGNORE INTO ml_driver_links(source_name,driver_id) VALUES(?,?)",(key,driver_id))
             packages=item.processados-item.falhas
-            c.execute("""INSERT INTO ml_progress(driver_id,day,processed,total,failures,packages,updated_at)
-                         VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP)
+            prior=c.execute("SELECT processed,total,failures,status FROM ml_progress WHERE driver_id=? AND day=?",(driver_id,day)).fetchone()
+            # Uma rota finalizada nunca volta a 'em progresso' nem perde pacotes.
+            if prior and prior["status"]=="finalizado" and item.status!="finalizado":
+                continue
+            if prior and item.processados < prior["processed"]:
+                continue
+            c.execute("""INSERT INTO ml_progress(driver_id,day,processed,total,failures,packages,status,finalized_at,updated_at)
+                         VALUES(?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
                          ON CONFLICT(driver_id,day) DO UPDATE SET
                          processed=excluded.processed,total=excluded.total,
                          failures=excluded.failures,packages=excluded.packages,
+                         status=excluded.status,
+                         finalized_at=CASE WHEN ml_progress.finalized_at IS NOT NULL
+                           THEN ml_progress.finalized_at ELSE excluded.finalized_at END,
                          updated_at=CURRENT_TIMESTAMP""",
-                      (driver_id,day,item.processados,item.total,item.falhas,packages))
+                      (driver_id,day,item.processados,item.total,item.falhas,packages,item.status,
+                       datetime.now().isoformat(timespec="seconds") if item.status=="finalizado" else None))
             updated+=1
     return {"ok":True,"data":day,"motoristas":updated,"novos":created}
 
