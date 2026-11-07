@@ -48,6 +48,10 @@ with db() as c:
       day TEXT NOT NULL, packages INTEGER NOT NULL CHECK(packages>=0),
       rate_cents INTEGER NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE TABLE IF NOT EXISTS ml_driver_links (
+      source_name TEXT PRIMARY KEY,
+      driver_id INTEGER NOT NULL REFERENCES drivers(id)
+    );
     CREATE TABLE IF NOT EXISTS ml_progress (
       driver_id INTEGER NOT NULL REFERENCES drivers(id),
       day TEXT NOT NULL,
@@ -94,6 +98,7 @@ def sync_ml(request:Request, payload:MLBatch):
     updated=created=0
     with db() as c:
         existing=c.execute("SELECT id,name FROM drivers").fetchall()
+        links={r["source_name"]:r["driver_id"] for r in c.execute("SELECT source_name,driver_id FROM ml_driver_links")}
         known={}
         for d in existing:
             known.setdefault(normalize_name(d["name"]),[]).append(d["id"])
@@ -104,7 +109,7 @@ def sync_ml(request:Request, payload:MLBatch):
             if key in seen or not key or item.processados>item.total or item.falhas>item.processados:
                 raise HTTPException(400,"Dados de motorista inconsistentes")
             seen.add(key)
-            matches=known.get(key,[])
+            matches=[links[key]] if key in links else known.get(key,[])
             if len(matches)>1:
                 raise HTTPException(409,"Nome duplicado no cadastro: "+name)
             if matches:
@@ -118,6 +123,7 @@ def sync_ml(request:Request, payload:MLBatch):
                 driver_id=cur.lastrowid
                 known[key]=[driver_id]
                 created+=1
+            c.execute("INSERT OR IGNORE INTO ml_driver_links(source_name,driver_id) VALUES(?,?)",(key,driver_id))
             packages=item.processados-item.falhas
             c.execute("""INSERT INTO ml_progress(driver_id,day,processed,total,failures,packages,updated_at)
                          VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP)
@@ -247,11 +253,26 @@ def add_driver(request: Request, token: str=Form(...), name: str=Form(...), plat
 @app.post("/motoristas/{driver_id}/editar")
 def edit_driver(request: Request, driver_id:int, token:str=Form(...), name:str=Form(...),plate:str=Form(...),cpf:str=Form(...),rate:str=Form(...)):
     auth(request);csrf(request,token)
-    digits="".join(ch for ch in cpf if ch.isdigit())
-    if len(digits)!=11 or not name.strip() or not plate.strip():raise HTTPException(400,"Dados inválidos")
     with db() as c:
-        try: c.execute("UPDATE drivers SET name=?,plate=?,cpf=?,rate_cents=? WHERE id=?",(name.strip(),plate.strip().upper(),digits,cents(rate),driver_id))
-        except sqlite3.IntegrityError: raise HTTPException(400,"CPF já cadastrado")
+        old=c.execute("SELECT cpf,plate FROM drivers WHERE id=?",(driver_id,)).fetchone()
+        if not old:raise HTTPException(404,"Motorista não encontrado")
+        provisional=old["cpf"].startswith("ML-PENDENTE-")
+        digits="".join(ch for ch in cpf if ch.isdigit())
+        # Permite manter o identificador provisório; nunca interpreta como CPF.
+        if provisional and (cpf==old["cpf"] or not cpf.strip()):
+            stored_cpf=old["cpf"]
+        elif len(digits)==11:
+            stored_cpf=digits
+        else:
+            raise HTTPException(400,"Informe CPF válido ou mantenha o cadastro provisório")
+        plate_value=plate.strip().upper()
+        if not name.strip() or not plate_value:
+            raise HTTPException(400,"Nome e placa são obrigatórios")
+        try:
+            c.execute("UPDATE drivers SET name=?,plate=?,cpf=?,rate_cents=? WHERE id=?",
+                      (name.strip(),plate_value,stored_cpf,cents(rate),driver_id))
+        except sqlite3.IntegrityError:
+            raise HTTPException(400,"CPF já cadastrado")
     return RedirectResponse("/motoristas",303)
 
 @app.post("/entregas")
