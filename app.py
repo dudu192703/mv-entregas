@@ -4,6 +4,9 @@ import secrets
 import hashlib
 import hmac
 import io
+import re
+import unicodedata
+from pydantic import BaseModel, Field
 from datetime import date, datetime, timedelta
 from contextlib import contextmanager
 from fastapi import FastAPI, Request, Form, HTTPException
@@ -45,11 +48,86 @@ with db() as c:
       day TEXT NOT NULL, packages INTEGER NOT NULL CHECK(packages>=0),
       rate_cents INTEGER NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE TABLE IF NOT EXISTS ml_progress (
+      driver_id INTEGER NOT NULL REFERENCES drivers(id),
+      day TEXT NOT NULL,
+      processed INTEGER NOT NULL CHECK(processed>=0),
+      total INTEGER NOT NULL CHECK(total>=0),
+      failures INTEGER NOT NULL CHECK(failures>=0),
+      packages INTEGER NOT NULL CHECK(packages>=0),
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY(driver_id,day)
+    );
     CREATE TABLE IF NOT EXISTS audit (
       id INTEGER PRIMARY KEY, action TEXT NOT NULL, delivery_id INTEGER,
       details TEXT, at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
     """)
+    c.execute("""CREATE VIEW IF NOT EXISTS combined_deliveries AS
+      SELECT driver_id,day,packages,rate_cents FROM deliveries
+      UNION ALL
+      SELECT m.driver_id,m.day,m.packages,d.rate_cents
+      FROM ml_progress m JOIN drivers d ON d.id=m.driver_id""")
+
+class MLDriver(BaseModel):
+    nome: str = Field(min_length=3, max_length=160)
+    processados: int = Field(ge=0, le=100000)
+    total: int = Field(ge=0, le=100000)
+    falhas: int = Field(ge=0, le=100000)
+
+class MLBatch(BaseModel):
+    motoristas: list[MLDriver] = Field(min_length=1,max_length=200)
+
+def normalize_name(name):
+    return " ".join(unicodedata.normalize("NFKD",name).casefold().split())
+
+@app.post("/api/ml/sync")
+def sync_ml(request:Request, payload:MLBatch):
+    # O endpoint aceita somente chamadas originadas no proprio computador.
+    if request.client is None or request.client.host not in ("127.0.0.1","::1"):
+        raise HTTPException(403,"Somente acesso local")
+    expected=os.getenv("MV_SYNC_TOKEN","")
+    received=request.headers.get("X-MV-Sync-Token","")
+    if len(expected)<24 or not hmac.compare_digest(expected,received):
+        raise HTTPException(401,"Token de sincronizacao invalido")
+    day=str(date.today())
+    updated=created=0
+    with db() as c:
+        existing=c.execute("SELECT id,name FROM drivers").fetchall()
+        known={}
+        for d in existing:
+            known.setdefault(normalize_name(d["name"]),[]).append(d["id"])
+        seen=set()
+        for item in payload.motoristas:
+            name=" ".join(item.nome.split())
+            key=normalize_name(name)
+            if key in seen or not key or item.processados>item.total or item.falhas>item.processados:
+                raise HTTPException(400,"Dados de motorista inconsistentes")
+            seen.add(key)
+            matches=known.get(key,[])
+            if len(matches)>1:
+                raise HTTPException(409,"Nome duplicado no cadastro: "+name)
+            if matches:
+                driver_id=matches[0]
+            else:
+                # Identificador interno provisório; nao e um CPF real.
+                import uuid
+                marker="ML-PENDENTE-"+uuid.uuid4().hex
+                cur=c.execute("INSERT INTO drivers(name,plate,cpf,rate_cents) VALUES(?,?,?,0)",
+                              (name,"PENDENTE",marker))
+                driver_id=cur.lastrowid
+                known[key]=[driver_id]
+                created+=1
+            packages=item.processados-item.falhas
+            c.execute("""INSERT INTO ml_progress(driver_id,day,processed,total,failures,packages,updated_at)
+                         VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP)
+                         ON CONFLICT(driver_id,day) DO UPDATE SET
+                         processed=excluded.processed,total=excluded.total,
+                         failures=excluded.failures,packages=excluded.packages,
+                         updated_at=CURRENT_TIMESTAMP""",
+                      (driver_id,day,item.processados,item.total,item.falhas,packages))
+            updated+=1
+    return {"ok":True,"data":day,"motoristas":updated,"novos":created}
 
 def auth(request):
     if not request.session.get("auth"):
@@ -97,19 +175,19 @@ def home(request: Request, periodo: str = "quinzena"):
             first, last = period_bounds(today, key)
             r = c.execute(
                 "SELECT COALESCE(SUM(packages),0) n, COALESCE(SUM(packages*rate_cents),0) v "
-                "FROM deliveries WHERE day BETWEEN ? AND ?", (str(first), str(last))
+                "FROM combined_deliveries WHERE day BETWEEN ? AND ?", (str(first), str(last))
             ).fetchone()
             stats[key] = dict(r)
         ranking = [dict(row) for row in c.execute(
             "SELECT d.name, COALESCE(SUM(e.packages),0) n, "
             "COALESCE(SUM(e.packages*e.rate_cents),0) v "
-            "FROM drivers d LEFT JOIN deliveries e ON e.driver_id=d.id "
+            "FROM drivers d LEFT JOIN combined_deliveries e ON e.driver_id=d.id "
             "AND e.day BETWEEN ? AND ? GROUP BY d.id ORDER BY n DESC,d.name",
             (str(start), str(end))
         ).fetchall()]
         daily = {row["day"]: dict(row) for row in c.execute(
             "SELECT day,SUM(packages) n,SUM(packages*rate_cents) v "
-            "FROM deliveries WHERE day BETWEEN ? AND ? GROUP BY day ORDER BY day",
+            "FROM combined_deliveries WHERE day BETWEEN ? AND ? GROUP BY day ORDER BY day",
             (str(start), str(end))
         ).fetchall()}
         active_drivers = c.execute(
@@ -216,7 +294,7 @@ def report_data(start,end,ids):
         selected=[d for d in drivers if not ids or d["id"] in ids]
         result=[]
         for d in selected:
-            rows=c.execute("SELECT day,SUM(packages) n,SUM(packages*rate_cents) v FROM deliveries WHERE driver_id=? AND day BETWEEN ? AND ? GROUP BY day ORDER BY day",(d["id"],start,end)).fetchall()
+            rows=c.execute("SELECT day,SUM(packages) n,SUM(packages*rate_cents) v FROM combined_deliveries WHERE driver_id=? AND day BETWEEN ? AND ? GROUP BY day ORDER BY day",(d["id"],start,end)).fetchall()
             result.append((d,rows))
     return drivers,result
 
