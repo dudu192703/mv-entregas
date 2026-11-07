@@ -24,8 +24,8 @@ function lerPagina(){
   let status=null;
   const rx=/^(\d+)\s+de\s+(\d+)\s+unidades?$/i;
   for(let i=0;i<linhas.length;i++){
-    if(/^Em progresso(?:\\s*\\(\\d+\\))?$/i.test(linhas[i]))status="em_progresso";
-    if(/^Finalizado(?:\\s*\\(\\d+\\))?$/i.test(linhas[i]))status="finalizado";
+    if(/^Em progresso(?:\s*\(\d+\))?$/i.test(linhas[i]))status="em_progresso";
+    if(/^Finalizado(?:\s*\(\d+\))?$/i.test(linhas[i]))status="finalizado";
     const m=linhas[i].match(rx);if(!m||!status)continue;
     const nome=linhas[i-1]||"";if(!nome||/^(Em progresso|Finalizado|Buscar transportador)$/i.test(nome))continue;
     let falhas=0;
