@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MV Entregas — Leitor Mercado Livre",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Sincroniza progresso com MV Entregas local, mediante ativacao.",
   "permissions": [
     "scripting",
