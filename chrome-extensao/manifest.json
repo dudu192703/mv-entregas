@@ -1,12 +1,21 @@
 {
   "manifest_version": 3,
   "name": "MV Entregas — Leitor Mercado Livre",
-  "version": "0.1.0",
-  "description": "Lê o progresso dos motoristas na aba aberta, sob comando do usuário.",
+  "version": "0.2.0",
+  "description": "Sincroniza progresso com MV Entregas local, mediante ativacao.",
   "permissions": [
-    "activeTab",
-    "scripting"
+    "scripting",
+    "tabs",
+    "storage",
+    "alarms"
   ],
+  "host_permissions": [
+    "https://envios.mercadolivre.com.br/logistics/dist-ops/reports/monitoring*",
+    "http://127.0.0.1:8000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html"
   }
