@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "MV Entregas — Leitor Mercado Livre",
+  "version": "0.1.0",
+  "description": "Lê o progresso dos motoristas na aba aberta, sob comando do usuário.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
