@@ -334,7 +334,13 @@ def report_data(start,end,ids):
         selected=[d for d in drivers if not ids or d["id"] in ids]
         result=[]
         for d in selected:
-            rows=c.execute("SELECT day,SUM(packages) n,SUM(packages*rate_cents) v FROM combined_deliveries WHERE driver_id=? AND day BETWEEN ? AND ? GROUP BY day ORDER BY day",(d["id"],start,end)).fetchall()
+            rows=c.execute("""SELECT x.day,x.n,x.v,COALESCE(m.failures,0) falhas,
+CASE WHEN m.status='finalizado' THEN 'Finalizado'
+WHEN m.status='em_progresso' THEN 'Em progresso' ELSE 'Manual' END status
+FROM (SELECT day,SUM(packages) n,SUM(packages*rate_cents) v
+FROM combined_deliveries WHERE driver_id=? AND day BETWEEN ? AND ? GROUP BY day) x
+LEFT JOIN ml_progress m ON m.driver_id=? AND m.day=x.day
+ORDER BY x.day""",(d["id"],start,end,d["id"])).fetchall()
             result.append((d,rows))
     return drivers,result
 
@@ -358,12 +364,12 @@ def pdf(request:Request,start:str,end:str,motorista:list[int]|None=None):
     for i,(d,rows) in enumerate(result):
         if i:story.append(PageBreak())
         story.append(Paragraph(d["name"],styles["Heading2"]))
-        data=[["Data","Pacotes","Valor (R$)"]]
-        n=v=0
+        data=[["Data","Entregues","Falhas","Status","Valor (R$)"]]
+        n=v=failures=0
         for r in rows:
-            n+=r["n"];v+=r["v"]
-            data.append([r["day"],str(r["n"]),f'{r["v"]/100:.2f}'])
-        data.append(["TOTAL",str(n),f"{v/100:.2f}"])
+            n+=r["n"];v+=r["v"];failures+=r["falhas"]
+            data.append([r["day"],str(r["n"]),str(r["falhas"]),r["status"],f'{r["v"]/100:.2f}'])
+        data.append(["TOTAL",str(n),str(failures),"",f"{v/100:.2f}"])
         grand_n+=n;grand_v+=v
         t=Table(data,repeatRows=1)
         t.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#ffe600")),("GRID",(0,0),(-1,-1),.4,colors.grey),("PADDING",(0,0),(-1,-1),8)]))
