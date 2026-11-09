@@ -149,7 +149,6 @@
 <form method="post" action="/configuracoes/restaurar" enctype="multipart/form-data" onsubmit="return confirm('Substituir todos os dados atuais pelo backup?')">
 <input type="hidden" name="token" value="{{csrf}}">
 <label>Selecione o ZIP<input type="file" name="arquivo" accept=".zip,application/zip" required></label>
-<label>Digite RESTAURAR<input type="text" name="confirmar" pattern="RESTAURAR" autocomplete="off" required></label>
 <button type="submit">Restaurar dados</button></form></section>
 </div>
 {% elif page=='dashboard' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>Dashboard</a>
