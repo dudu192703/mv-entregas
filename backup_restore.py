@@ -44,11 +44,9 @@ def install(app, db_path, auth, csrf, render):
 
     @app.post("/configuracoes/restaurar")
     async def restore(request: Request, token: str = Form(...),
-                      confirmar: str = Form(...), arquivo: UploadFile = File(...)):
+                      arquivo: UploadFile = File(...)):
         auth(request)
         csrf(request, token)
-        if confirmar != "RESTAURAR":
-            raise HTTPException(400, "Digite RESTAURAR para confirmar")
         raw = await arquivo.read(25 * 1024 * 1024 + 1)
         if len(raw) > 25 * 1024 * 1024:
             raise HTTPException(413, "Arquivo ZIP excede 25 MB")
