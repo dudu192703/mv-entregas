@@ -216,7 +216,7 @@ def home(request: Request, periodo: str = "quinzena"):
             (str(start), str(end))
         ).fetchall()}
         active_drivers = c.execute(
-            "SELECT COUNT(DISTINCT driver_id) n FROM deliveries WHERE day BETWEEN ? AND ?",
+            "SELECT COUNT(DISTINCT driver_id) n FROM combined_deliveries WHERE day BETWEEN ? AND ?",
             (str(start), str(end))
         ).fetchone()["n"]
     days = []
@@ -380,3 +380,6 @@ def pdf(request:Request,start:str,end:str,motorista:list[int]|None=None):
 
 from backup_restore import install as install_backup_restore
 install_backup_restore(app, DB, auth, csrf, render)
+
+from historico import install as install_historico
+install_historico(app, db, auth, csrf, render)
