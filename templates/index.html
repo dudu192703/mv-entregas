@@ -127,16 +127,29 @@
 <div class="mv-logo-name"><span class="mv-name-white">MV</span><span class="mv-name-yellow">Entregas</span></div>
 </div>
 <nav class="mv-nav" aria-label="Menu principal">
-<a href="/" class="{{'active' if page=='dashboard' else ''}}" {% if page=='dashboard' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>Dashboard</a>
+<a href="/" class="{{'active' if page=='dashboard' else ''}}" {% if page=='configuracoes' %}
+<section class="panel"><h2>Baixar dados</h2>
+<p>Baixe um ZIP com todos os motoristas, entregas e registros. O arquivo contém dados pessoais: guarde em local seguro.</p>
+{% if mensagem %}<p role="status">{{mensagem}}</p>{% endif %}
+<form method="post" action="/configuracoes/baixar"><input type="hidden" name="token" value="{{csrf}}"><button type="submit">Baixar dados (ZIP)</button></form>
+</section>
+<section class="panel"><h2>Restaurar dados</h2>
+<p><strong>Atenção:</strong> esta operação substitui todos os dados existentes; não combina registros. Baixe primeiro uma cópia do servidor.</p>
+<form method="post" action="/configuracoes/restaurar" enctype="multipart/form-data" onsubmit="return confirm('Substituir todos os dados atuais pelo backup?')">
+<input type="hidden" name="token" value="{{csrf}}">
+<label>Selecione o ZIP<input type="file" name="arquivo" accept=".zip,application/zip" required></label>
+<label>Digite RESTAURAR<input type="text" name="confirmar" pattern="RESTAURAR" autocomplete="off" required></label>
+<button type="submit">Restaurar dados</button></form></section>
+{% elif page=='dashboard' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>Dashboard</a>
 <a href="/motoristas" class="{{'active' if page=='motoristas' else ''}}" {% if page=='motoristas' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M2 20v-2a6 6 0 0 1 12 0v2zM16 5a3 3 0 0 1 0 6m1 4a5 5 0 0 1 5 5"/></svg>Motoristas</a>
 <a href="/motoristas#lancar-entregas"><svg viewBox="0 0 24 24"><path d="m12 2 9 5v10l-9 5-9-5V7zM3 7l9 5 9-5M12 12v10M8 4l9 5"/></svg>Entregas</a>
 <a href="/relatorios" class="{{'active' if page=='relatorios' else ''}}" {% if page=='relatorios' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><rect x="3" y="13" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>Relatórios</a>
 <div class="mv-divider"></div>
-<span class="mv-disabled" title="Página de configurações ainda não implementada"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M10 2h4l1 3 2 1 3-1 2 4-2 2v2l2 2-2 4-3-1-2 1-1 3h-4l-1-3-2-1-3 1-2-4 2-2v-2L2 9l2-4 3 1 2-1z"/></svg>Configurações</span>
+<a href="/configuracoes" class="{{'active' if page=='configuracoes' else ''}}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M10 2h4l1 3 2 1 3-1 2 4-2 2v2l2 2-2 4-3-1-2 1-1 3h-4l-1-3-2-1-3 1-2-4 2-2v-2L2 9l2-4 3 1 2-1z"/></svg>Configurações</a>
 <form method="post" action="/logout" class="mv-logout"><input type="hidden" name="token" value="{{csrf}}"><button type="submit"><svg viewBox="0 0 24 24"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M14 7l5 5-5 5M8 12h11"/></svg>Sair</button></form>
 </nav>
 <div class="mv-boxes" aria-hidden="true"><div class="mv-box mv-box-back"><span>↔</span></div><div class="mv-box mv-box-front"><span>↔</span></div></div>
-</aside><main><header><h1>{{ {'dashboard':'Dashboard','motoristas':'Motoristas','relatorios':'Relatórios'}[page] }}</h1><form method="post" action="/logout"><input type="hidden" name="token" value="{{csrf}}"><button>Sair</button></form></header>
+</aside><main><header><h1>{{ {'dashboard':'Dashboard','motoristas':'Motoristas','relatorios':'Relatórios','configuracoes':'Configurações'}[page] }}</h1><form method="post" action="/logout"><input type="hidden" name="token" value="{{csrf}}"><button>Sair</button></form></header>
 {% if page=='dashboard' %}
 <div class="dashboard-head">
   <div><h2>Visão geral das entregas</h2><p>Indicadores atualizados com os lançamentos cadastrados • {{period_label}}</p></div>

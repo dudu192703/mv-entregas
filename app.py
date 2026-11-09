@@ -377,3 +377,6 @@ def pdf(request:Request,start:str,end:str,motorista:list[int]|None=None):
     story.extend([Spacer(1,20),Paragraph(f"Total geral: {grand_n} pacotes - R$ {grand_v/100:.2f}",styles["Heading2"])])
     doc.build(story);buf.seek(0)
     return StreamingResponse(buf,media_type="application/pdf",headers={"Content-Disposition":"attachment; filename=mv-entregas-relatorio.pdf"})
+
+from backup_restore import install as install_backup_restore
+install_backup_restore(app, DB, auth, csrf, render)
