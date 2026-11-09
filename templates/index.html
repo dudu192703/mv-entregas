@@ -86,6 +86,16 @@
 .mv-box span{position:relative;z-index:1;background:#e9a45b99;border:2px solid #965a25;border-radius:50%;padding:4px;font-size:22px}
 @media(max-width:850px){.mv-sidebar{width:220px}.mv-logo-name{font-size:23px}.mv-nav a,.mv-nav button,.mv-nav .mv-disabled{font-size:15px;gap:12px;padding:11px}.mv-boxes{transform:scale(.85);transform-origin:bottom center}}
 @media(max-width:700px){.mv-sidebar{width:100%;min-height:0;height:auto;position:relative;padding:10px 12px 12px}.mv-logo{padding:5px 0 12px}.mv-logo-art{width:95px;height:43px}.mv-logo-name{font-size:22px}.mv-nav{display:flex;flex-direction:row;gap:6px;overflow-x:auto}.mv-nav a,.mv-nav button,.mv-nav .mv-disabled{width:auto;min-height:44px;white-space:nowrap;font-size:13px;gap:7px;padding:9px 11px}.mv-nav svg{width:20px;height:20px}.mv-nav .mv-divider,.mv-boxes{display:none}.mv-logout{width:auto;display:flex}}
+
+/* Configuracoes: dois paineis compactos, lado a lado no desktop. */
+.settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start;max-width:1180px;margin:0 auto}
+.settings-grid .panel{min-width:0;margin:0;padding:22px}
+.settings-grid h2{margin:0 0 12px;font-size:22px}
+.settings-grid p{font-size:14px;line-height:1.5}
+.settings-grid input[type=file],.settings-grid input[type=text]{width:100%;min-width:0;max-width:100%;font-size:14px}
+.settings-grid button{max-width:100%;white-space:normal}
+@media(max-width:1050px){.settings-grid{grid-template-columns:1fr;max-width:720px}}
+@media(max-width:700px){.settings-grid .panel{padding:17px}.settings-grid h2{font-size:20px}}
 </style></head><body>
 {% if page == 'login' %}
 <div class="login">
@@ -128,6 +138,7 @@
 </div>
 <nav class="mv-nav" aria-label="Menu principal">
 <a href="/" class="{{'active' if page=='dashboard' else ''}}" {% if page=='configuracoes' %}
+<div class="settings-grid">
 <section class="panel"><h2>Baixar dados</h2>
 <p>Baixe um ZIP com todos os motoristas, entregas e registros. O arquivo contém dados pessoais: guarde em local seguro.</p>
 {% if mensagem %}<p role="status">{{mensagem}}</p>{% endif %}
@@ -140,6 +151,7 @@
 <label>Selecione o ZIP<input type="file" name="arquivo" accept=".zip,application/zip" required></label>
 <label>Digite RESTAURAR<input type="text" name="confirmar" pattern="RESTAURAR" autocomplete="off" required></label>
 <button type="submit">Restaurar dados</button></form></section>
+</div>
 {% elif page=='dashboard' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>Dashboard</a>
 <a href="/motoristas" class="{{'active' if page=='motoristas' else ''}}" {% if page=='motoristas' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M2 20v-2a6 6 0 0 1 12 0v2zM16 5a3 3 0 0 1 0 6m1 4a5 5 0 0 1 5 5"/></svg>Motoristas</a>
 <a href="/motoristas#lancar-entregas"><svg viewBox="0 0 24 24"><path d="m12 2 9 5v10l-9 5-9-5V7zM3 7l9 5 9-5M12 12v10M8 4l9 5"/></svg>Entregas</a>
