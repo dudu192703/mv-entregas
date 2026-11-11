@@ -383,3 +383,6 @@ install_backup_restore(app, DB, auth, csrf, render)
 
 from historico import install as install_historico
 install_historico(app, db, auth, csrf, render)
+
+from busca_pacotes import install as install_busca_pacotes
+install_busca_pacotes(app, auth, render)
