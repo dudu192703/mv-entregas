@@ -385,4 +385,7 @@ from historico import install as install_historico
 install_historico(app, db, auth, csrf, render)
 
 from busca_pacotes import install as install_busca_pacotes
-install_busca_pacotes(app, auth, render)
+install_busca_pacotes(app, auth, render, DB)
+
+from sincronizacao_pacotes import install as install_sync_pacotes
+install_sync_pacotes(app, DB)
