@@ -156,12 +156,13 @@
 <a href="/motoristas#lancar-entregas"><svg viewBox="0 0 24 24"><path d="m12 2 9 5v10l-9 5-9-5V7zM3 7l9 5 9-5M12 12v10M8 4l9 5"/></svg>Entregas</a>
 <a href="/relatorios" class="{{'active' if page=='relatorios' else ''}}" {% if page=='relatorios' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><rect x="3" y="13" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>Relatórios</a>
 <a href="/historico" class="{{'active' if page=='historico' else ''}}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg>Histórico</a>
+<a href="/buscar-pacote" class="{{'active' if page=='buscar_pacote' else ''}}" {% if page=='buscar_pacote' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg>Buscar Pacote</a>
 <div class="mv-divider"></div>
 <a href="/configuracoes" class="{{'active' if page=='configuracoes' else ''}}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M10 2h4l1 3 2 1 3-1 2 4-2 2v2l2 2-2 4-3-1-2 1-1 3h-4l-1-3-2-1-3 1-2-4 2-2v-2L2 9l2-4 3 1 2-1z"/></svg>Configurações</a>
 <form method="post" action="/logout" class="mv-logout"><input type="hidden" name="token" value="{{csrf}}"><button type="submit"><svg viewBox="0 0 24 24"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M14 7l5 5-5 5M8 12h11"/></svg>Sair</button></form>
 </nav>
 <div class="mv-boxes" aria-hidden="true"><div class="mv-box mv-box-back"><span>↔</span></div><div class="mv-box mv-box-front"><span>↔</span></div></div>
-</aside><main><header><h1>{{ {'dashboard':'Dashboard','motoristas':'Motoristas','relatorios':'Relatórios','configuracoes':'Configurações','historico':'Histórico'}[page] }}</h1><form method="post" action="/logout"><input type="hidden" name="token" value="{{csrf}}"><button>Sair</button></form></header>
+</aside><main><header><h1>{{ {'dashboard':'Dashboard','motoristas':'Motoristas','relatorios':'Relatórios','configuracoes':'Configurações','historico':'Histórico','buscar_pacote':'Buscar Pacote'}[page] }}</h1><form method="post" action="/logout"><input type="hidden" name="token" value="{{csrf}}"><button>Sair</button></form></header>
 {% if page=='dashboard' %}
 <div class="dashboard-head">
   <div><h2>Visão geral das entregas</h2><p>Indicadores atualizados com os lançamentos cadastrados • {{period_label}}</p></div>
@@ -222,6 +223,28 @@
     </section>
   </div>
 </div>
+{% elif page=='buscar_pacote' %}
+<section class="panel" style="max-width:850px">
+  <h2>Buscar pacote</h2>
+  <p class="muted">Digite o ID do pacote para consultar o endereço registrado pelo coletor de zonas.</p>
+  <form method="get" action="/buscar-pacote" class="row">
+    <div><label for="pacote-id">ID do pacote</label><input id="pacote-id" name="id" value="{{pacote_id}}" inputmode="numeric" pattern="[0-9]{8,20}" maxlength="20" placeholder="Digite o ID do pacote" required autofocus></div>
+    <button type="submit">Buscar</button>
+  </form>
+</section>
+{% if mensagem %}<section class="panel" role="status"><p>{{mensagem}}</p></section>{% endif %}
+{% for item in resultados %}
+<section class="panel" style="max-width:850px">
+  <h2>Pacote {{item.shipment_id}}</h2>
+  <p class="muted">Endereço de entrega</p>
+  <p style="font-size:22px;font-weight:700;overflow-wrap:anywhere">{{item.address or 'Endereço ainda não coletado'}}</p>
+  <div class="row">
+    <div><label>Zona</label><strong>{{item.zone_external_id or '-' }} — {{item.zone_name or '-'}}</strong></div>
+    <div><label>Parada</label><strong>{{item.stop_sequence if item.stop_sequence is not none else '-'}}</strong></div>
+    <div><label>Pacotes na parada</label><strong>{{item.total_shipments if item.total_shipments is not none else '-'}}</strong></div>
+  </div>
+</section>
+{% endfor %}
 {% elif page=='motoristas' %}<section class="panel"><h2>Adicionar motorista</h2><form method="post" action="/motoristas" class="row"><input type="hidden" name="token" value="{{csrf}}"><div><label>Nome</label><input name="name" required></div><div><label>Placa</label><input name="plate" required></div><div><label>CPF</label><input name="cpf" required></div><div><label>Valor por pacote (R$)</label><input name="rate" placeholder="3,50" required></div><button>Salvar motorista</button></form></section><section class="panel"><h2>Motoristas cadastrados</h2><div class="tablewrap"><table><tr><th>Nome</th><th>Placa</th><th>CPF</th><th>R$/pacote</th><th>Editar</th></tr>{% for d in drivers %}<tr><td>{{d.name}}</td><td>{{d.plate}}</td><td>{% if d.cpf.startswith("ML-PENDENTE-") %}Pendente{% else %}***.***.{{d.cpf[6:9]}}-**{% endif %}</td><td>{{'%.2f'|format(d.rate_cents/100)}}</td><td><details><summary>Editar</summary><form method="post" action="/motoristas/{{d.id}}/editar"><input type="hidden" name="token" value="{{csrf}}"><input name="name" value="{{d.name}}" required><input name="plate" value="{{d.plate}}" required><input name="cpf" value="{{d.cpf}}" {% if not d.cpf.startswith("ML-PENDENTE-") %}required{% endif %} placeholder="CPF (opcional para importados)"><input name="rate" value="{{'%.2f'|format(d.rate_cents/100)}}" required><button>Salvar</button></form></details></td></tr>{% endfor %}</table></div></section><section class="panel" id="lancar-entregas"><h2>Lançar entregas do dia</h2><form class="row" method="post" action="/entregas"><input type="hidden" name="token" value="{{csrf}}"><div><label>Motorista</label><select name="driver_id" required>{% for d in drivers %}<option value="{{d.id}}">{{d.name}}</option>{% endfor %}</select></div><div><label>Data</label><input type="date" name="day" required></div><div><label>Pacotes entregues</label><input type="number" name="packages" min="0" required></div><button>Registrar</button></form></section><section class="panel"><h2>Últimos lançamentos</h2><div class="tablewrap"><table><tr><th>Data</th><th>Motorista</th><th>Pacotes</th><th>Valor</th><th>Ações</th></tr>{% for e in entries %}<tr><td>{{e.day}}</td><td>{{e.name}}</td><td>{{e.packages}}</td><td>R$ {{'%.2f'|format(e.packages*e.rate_cents/100)}}</td><td><details><summary>Editar</summary><form method="post" action="/entregas/{{e.id}}/editar"><input type="hidden" name="token" value="{{csrf}}"><select name="driver_id">{% for d in drivers %}<option value="{{d.id}}" {{'selected' if d.id==e.driver_id else ''}}>{{d.name}}</option>{% endfor %}</select><input type="date" name="day" value="{{e.day}}" required><input type="number" name="packages" value="{{e.packages}}" min="0" required><button>Salvar</button></form></details><form method="post" action="/entregas/{{e.id}}/excluir" onsubmit="return confirm('Excluir este lançamento?')" class="inline"><input type="hidden" name="token" value="{{csrf}}"><button>Excluir</button></form></td></tr>{% endfor %}</table></div></section>
 {% elif page=='historico' %}
 <section class="panel"><h2>Histórico de entregas</h2>
